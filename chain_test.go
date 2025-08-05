@@ -1,23 +1,24 @@
 package chain
 
 import (
+	"context"
 	"errors"
 	"fmt"
 )
 
 func ExampleNew() {
 
-	f1 := func(args ...any) ([]any, error) {
+	f1 := func(ctx context.Context, args ...any) ([]any, error) {
 		x := args[0].(int)
 		return []any{x + 1}, nil
 	}
 
-	f2 := func(args ...any) ([]any, error) {
+	f2 := func(ctx context.Context, args ...any) ([]any, error) {
 		x := args[0].(int)
 		return []any{x * 2}, nil
 	}
 
-	f3 := func(args ...any) ([]any, error) {
+	f3 := func(ctx context.Context, args ...any) ([]any, error) {
 		x := args[0].(int)
 		if x < 0 {
 			return nil, errors.New("x became negative")
@@ -25,14 +26,14 @@ func ExampleNew() {
 		return []any{x - 3}, nil
 	}
 
-	f4 := func(args ...any) (int, error) {
+	f4 := func(ctx context.Context, args ...any) (int, error) {
 		x := args[0].(int)
 		return x * x, nil
 	}
 
 	input := 5
 
-	result, _ := New[int](input).
+	result, _ := New[int](context.Background(), input).
 		Then(f1).
 		Then(f2).
 		Then(f3).
@@ -44,12 +45,12 @@ func ExampleNew() {
 
 func ExampleNew_single() {
 
-	finalOnly := func(args ...any) (int, error) {
+	finalOnly := func(ctx context.Context, args ...any) (int, error) {
 		x := args[0].(int)
 		return x * x, nil
 	}
 
-	result, _ := New[int](5).Finally(finalOnly)
+	result, _ := New[int](context.Background(), 5).Finally(finalOnly)
 
 	fmt.Println("Result:", result)
 	// Output: Result: 25
@@ -57,12 +58,12 @@ func ExampleNew_single() {
 
 func ExampleNew_noop() {
 
-	noOp := func(args ...any) (int, error) {
+	noOp := func(ctx context.Context, args ...any) (int, error) {
 		x := args[0].(int)
 		return x, nil
 	}
 
-	result, _ := New[int](5).Finally(noOp)
+	result, _ := New[int](context.Background(), 5).Finally(noOp)
 
 	fmt.Println("Result:", result)
 	// Output: Result: 5
@@ -70,17 +71,17 @@ func ExampleNew_noop() {
 
 func ExampleNew_failure() {
 
-	f1 := func(args ...any) ([]any, error) {
+	f1 := func(ctx context.Context, args ...any) ([]any, error) {
 		x := args[0].(int)
 		return []any{x + 1}, nil
 	}
 
-	f2 := func(args ...any) ([]any, error) {
+	f2 := func(ctx context.Context, args ...any) ([]any, error) {
 		x := args[0].(int)
 		return []any{x * 2}, nil
 	}
 
-	f3 := func(args ...any) ([]any, error) {
+	f3 := func(ctx context.Context, args ...any) ([]any, error) {
 		x := args[0].(int)
 		if x < 0 {
 			return nil, errors.New("x became negative")
@@ -88,14 +89,14 @@ func ExampleNew_failure() {
 		return []any{x - 3}, nil
 	}
 
-	f4 := func(args ...any) (int, error) {
+	f4 := func(ctx context.Context, args ...any) (int, error) {
 		x := args[0].(int)
 		return x * x, nil
 	}
 
 	input := -5
 
-	result, err := New[int](input).
+	result, err := New[int](context.Background(), input).
 		Then(f1).
 		Then(f2).
 		Then(f3).

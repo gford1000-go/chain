@@ -7,19 +7,20 @@ Controlled chaining of `func`s together to produce a desired output.
 
 ```go
 func main() {
-    first := func(args ...any) ([]any, error) {
+    first := func(ctx context.Context, args ...any) ([]any, error) {
         x := args[0].(int)
         return []any{x + 1}, nil
     }
 
-    finally := func(args ...any) (int, error) {
+    finally := func(ctx context.Context, args ...any) (int, error) {
         x := args[0].(int)
         return x * x, nil
     }
 
+    ctx := context.Background()
     input := 5
 
-    result, _ := New[int](input).
+    result, _ := New[int](ctx, input).
         Then(first).
         Finally(finally)
 

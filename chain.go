@@ -1,27 +1,29 @@
 package chain
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"runtime"
 )
 
 // Func is the type of func that can be passed to Chain.Then
-type Func func(...any) ([]any, error)
+type Func func(context.Context, ...any) ([]any, error)
 
 // FinalFunc is the type of func that must be passed to Chain.Finally to generate the output
-type FinalFunc[T any] func(...any) (T, error)
+type FinalFunc[T any] func(context.Context, ...any) (T, error)
 
 // Chain holds variadic args and tracks any error in the pipeline
 type Chain[T any] struct {
+	ctx  context.Context
 	t    T
 	args []any
 	err  error
 }
 
 // New starts a new pipeline with initial input values
-func New[T any](args ...any) Chain[T] {
-	return Chain[T]{args: args}
+func New[T any](ctx context.Context, args ...any) Chain[T] {
+	return Chain[T]{ctx: ctx, args: args}
 }
 
 // Then adds a transformation step: func(...any) ([]any, error)
@@ -30,7 +32,7 @@ func (c Chain[T]) Then(f Func) Chain[T] {
 		return c
 	}
 
-	result, err := f(c.args...)
+	result, err := f(c.ctx, c.args...)
 	if err != nil {
 		funcName := runtimeFuncName(f)
 		return Chain[T]{args: c.args, err: fmt.Errorf("error in %s: %w", funcName, err)}
@@ -46,7 +48,7 @@ func (c Chain[T]) Finally(f FinalFunc[T]) (T, error) {
 		return c.t, c.err
 	}
 
-	result, err := f(c.args...)
+	result, err := f(c.ctx, c.args...)
 	if err != nil {
 		funcName := runtimeFuncName(f)
 		return c.t, fmt.Errorf("error in %s: %w", funcName, err)
