@@ -278,3 +278,56 @@ func TestProcess_4(t *testing.T) {
 		t.Fatalf("expected NilFinally error, got: %v", err)
 	}
 }
+
+func TestChain_Then(t *testing.T) {
+
+	f1 := func(ctx context.Context, args ...any) ([]any, error) {
+		panic("Boom!")
+	}
+
+	f2 := func(ctx context.Context, args ...any) (int, error) {
+		x := args[0].(int)
+		return x + 2, nil
+	}
+
+	var i int = 5
+
+	_, err := Process(context.Background(),
+		[]Func{f1},
+		f2,
+		i)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, ErrUnhandledPanic) {
+		t.Fatalf("expected caught panic error, got: %v", err)
+	}
+}
+
+func TestChain_Finally(t *testing.T) {
+
+	f1 := func(ctx context.Context, args ...any) ([]any, error) {
+		return []any{0}, nil
+	}
+
+	f2 := func(ctx context.Context, args ...any) (int, error) {
+		panic("Finally Boom!")
+	}
+
+	var i int = 5
+
+	_, err := Process(context.Background(),
+		[]Func{f1},
+		f2,
+		i)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, ErrUnhandledPanic) {
+		t.Fatalf("expected caught panic error, got: %v", err)
+	}
+}

@@ -61,7 +61,7 @@ func (c Chain[T]) Then(f Func) Chain[T] {
 		funcName := runtimeFuncName(f)
 		return Chain[T]{err: fmt.Errorf("prior to call to %s, %w", funcName, ErrContextDone)}
 	default:
-		result, err := f(c.ctx, c.args...)
+		result, err := c.thenWrap(f)
 		if err != nil {
 			funcName := runtimeFuncName(f)
 			return Chain[T]{err: fmt.Errorf("error in %s: %w", funcName, err)}
@@ -69,6 +69,20 @@ func (c Chain[T]) Then(f Func) Chain[T] {
 
 		return Chain[T]{args: result, t: c.t, ctx: c.ctx}
 	}
+}
+
+// ErrUnhandledPanic raised if funcs panic when invoked by Then or Finally
+var ErrUnhandledPanic = errors.New("unhandled panic")
+
+func (c Chain[T]) thenWrap(f Func) (result []any, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = nil
+			err = fmt.Errorf("%v: %w", r, ErrUnhandledPanic)
+		}
+	}()
+
+	return f(c.ctx, c.args...)
 }
 
 // ErrNilFinalFunc is raised if a nil func is passsed to Finally
@@ -89,7 +103,7 @@ func (c Chain[T]) Finally(f FinalFunc[T]) (T, error) {
 		return c.t, fmt.Errorf("prior to call to %s, %w", funcName, ErrContextDone)
 	default:
 
-		result, err := f(c.ctx, c.args...)
+		result, err := c.finallyWrap(f)
 		if err != nil {
 			funcName := runtimeFuncName(f)
 			return c.t, fmt.Errorf("error in %s: %w", funcName, err)
@@ -97,6 +111,18 @@ func (c Chain[T]) Finally(f FinalFunc[T]) (T, error) {
 
 		return result, nil
 	}
+}
+
+func (c Chain[T]) finallyWrap(f FinalFunc[T]) (result T, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			var zero T
+			result = zero
+			err = fmt.Errorf("%v: %w", r, ErrUnhandledPanic)
+		}
+	}()
+
+	return f(c.ctx, c.args...)
 }
 
 // Helper to get function name for debug/error reporting
