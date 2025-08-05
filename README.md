@@ -53,6 +53,8 @@ func main() {
 }
 ```
 
-The chain checks for context completion between calls to each function, exiting the chain should this occur with an appropriate error.  Long running functions should similarly check for context completion.
+The chain will check for context completion between calls to each function, exiting the chain should this occur with an appropriate error.  Long running functions should similarly check for context completion.
+
+Should any of the functions generate an unhandled `panic`, the chain will capture the details of the panic and return as an error.
 
 See examples for usage.
