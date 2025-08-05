@@ -32,13 +32,19 @@ func (c Chain[T]) Then(f Func) Chain[T] {
 		return c
 	}
 
-	result, err := f(c.ctx, c.args...)
-	if err != nil {
+	select {
+	case <-c.ctx.Done():
 		funcName := runtimeFuncName(f)
-		return Chain[T]{args: c.args, err: fmt.Errorf("error in %s: %w", funcName, err)}
-	}
+		return Chain[T]{args: c.args, err: fmt.Errorf("context Done() prior to call to %s", funcName)}
+	default:
+		result, err := f(c.ctx, c.args...)
+		if err != nil {
+			funcName := runtimeFuncName(f)
+			return Chain[T]{args: c.args, err: fmt.Errorf("error in %s: %w", funcName, err)}
+		}
 
-	return Chain[T]{args: result, t: c.t}
+		return Chain[T]{args: result, t: c.t, ctx: c.ctx}
+	}
 }
 
 // Finally is a generic method on Chain that ends the pipeline
@@ -48,13 +54,20 @@ func (c Chain[T]) Finally(f FinalFunc[T]) (T, error) {
 		return c.t, c.err
 	}
 
-	result, err := f(c.ctx, c.args...)
-	if err != nil {
+	select {
+	case <-c.ctx.Done():
 		funcName := runtimeFuncName(f)
-		return c.t, fmt.Errorf("error in %s: %w", funcName, err)
-	}
+		return c.t, fmt.Errorf("context Done() prior to call to %s", funcName)
+	default:
 
-	return result, nil
+		result, err := f(c.ctx, c.args...)
+		if err != nil {
+			funcName := runtimeFuncName(f)
+			return c.t, fmt.Errorf("error in %s: %w", funcName, err)
+		}
+
+		return result, nil
+	}
 }
 
 // Helper to get function name for debug/error reporting
