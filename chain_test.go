@@ -71,6 +71,81 @@ func ExampleNew_noop() {
 	// Output: Result: 5
 }
 
+func ExampleNewWithRetries() {
+
+	// Retry up to 3 times, regardless of the type of error returned
+	var retry = Retry{
+		NumRetries: 3,
+		BaseWait:   8 * time.Millisecond,
+	}
+
+	repeatFail := func(ctx context.Context, args ...any) ([]any, error) {
+		return nil, errors.New("failed")
+	}
+
+	return99 := func(ctx context.Context, args ...any) (int, error) {
+		return 99, nil
+	}
+
+	_, err := NewWithRetries[int](context.Background(), retry, 5).
+		Then(repeatFail).
+		Finally(return99)
+
+	fmt.Println("Err:", err)
+	// Output: Err: error in github.com/gford1000-go/chain.ExampleNewWithRetries.func1: exceeded retry count
+}
+
+func ExampleNewWithRetries_forward() {
+
+	var errFailed = errors.New("failed")
+
+	// Specify that errFailed should be forwarded as the error and not retried
+	var retry = Retry{
+		NumRetries: 1,
+		BaseWait:   2 * time.Millisecond,
+		Forward:    []error{errFailed},
+	}
+
+	repeatFail := func(ctx context.Context, args ...any) ([]any, error) {
+		return nil, errFailed
+	}
+
+	return99 := func(ctx context.Context, args ...any) (int, error) {
+		return 99, nil
+	}
+
+	_, err := NewWithRetries[int](context.Background(), retry, 5).
+		Then(repeatFail).
+		Finally(return99)
+
+	fmt.Println("Err:", err)
+	// Output: Err: error in github.com/gford1000-go/chain.ExampleNewWithRetries_forward.func1: failed
+}
+
+func ExampleNewWithRetries_panic() {
+
+	// Retries up to 3 times for errors, but any panic is captured with no retries allowed
+	var retry = Retry{
+		NumRetries: 3,
+		BaseWait:   2 * time.Millisecond,
+	}
+
+	noRetryAsPanic := func(ctx context.Context, args ...any) ([]any, error) {
+		panic("Boom!")
+	}
+
+	return99 := func(ctx context.Context, args ...any) (int, error) {
+		return 99, nil
+	}
+
+	_, err := NewWithRetries[int](context.Background(), retry, 5).
+		Then(noRetryAsPanic).
+		Finally(return99)
+
+	fmt.Println("Err:", err)
+	// Output: Err: error in github.com/gford1000-go/chain.ExampleNewWithRetries_panic.func1: Boom!: unhandled panic
+}
+
 func ExampleNew_failure() {
 
 	f1 := func(ctx context.Context, args ...any) ([]any, error) {
