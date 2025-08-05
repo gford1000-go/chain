@@ -143,3 +143,118 @@ func TestNew(t *testing.T) {
 		t.Fatalf("expected context done error, got: %v", err)
 	}
 }
+
+func TestProcess(t *testing.T) {
+
+	f1 := func(ctx context.Context, args ...any) ([]any, error) {
+		x := args[0].(int)
+		return []any{x + 1}, nil
+	}
+
+	f2 := func(ctx context.Context, args ...any) (int, error) {
+		x := args[0].(int)
+		return x + 2, nil
+	}
+
+	var i int = 5
+
+	result, err := Process(context.Background(),
+		[]Func{f1},
+		f2,
+		i)
+
+	if err != nil {
+		t.Fatalf("unexpected error, got: %v", err)
+	}
+
+	if result != 8 {
+		t.Fatalf("unexpected result.  wanted: 3, got: %v", result)
+	}
+}
+
+func TestProcess_1(t *testing.T) {
+
+	f2 := func(ctx context.Context, args ...any) (int, error) {
+		x := args[0].(int)
+		return x + 2, nil
+	}
+
+	var i int = 5
+
+	_, err := Process(context.Background(),
+		[]Func{nil},
+		f2,
+		i)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, ErrNilThenFunc) {
+		t.Fatalf("expected NilThen error, got: %v", err)
+	}
+}
+
+func TestProcess_2(t *testing.T) {
+
+	f1 := func(ctx context.Context, args ...any) ([]any, error) {
+		x := args[0].(int)
+		return []any{x + 1}, nil
+	}
+
+	var i int = 5
+
+	_, err := Process[int](context.Background(),
+		[]Func{f1},
+		nil,
+		i)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, ErrNilFinalFunc) {
+		t.Fatalf("expected NilFinally error, got: %v", err)
+	}
+}
+
+func TestProcess_3(t *testing.T) {
+
+	f2 := func(ctx context.Context, args ...any) (int, error) {
+		x := args[0].(int)
+		return x + 2, nil
+	}
+
+	var i int = 5
+
+	result, err := Process(context.Background(),
+		nil,
+		f2,
+		i)
+
+	if err != nil {
+		t.Fatalf("unexpected error, got: %v", err)
+	}
+
+	if result != 7 {
+		t.Fatalf("unexpected result.  wanted: 3, got: %v", result)
+	}
+}
+
+func TestProcess_4(t *testing.T) {
+
+	var i int = 5
+
+	_, err := Process[int](context.Background(),
+		nil,
+		nil,
+		i)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, ErrNilFinalFunc) {
+		t.Fatalf("expected NilFinally error, got: %v", err)
+	}
+}

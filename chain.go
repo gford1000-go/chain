@@ -35,7 +35,7 @@ func New[T any](ctx context.Context, args ...any) Chain[T] {
 // Process is a single line equivalent for a chain call
 func Process[T any](ctx context.Context, fs []Func, fn FinalFunc[T], args ...any) (T, error) {
 
-	c := New[T](ctx, args)
+	var c = New[T](ctx, args...)
 
 	for _, f := range fs {
 		c = c.Then(f)
