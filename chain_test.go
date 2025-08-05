@@ -144,6 +144,26 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func ExampleProcess() {
+	f := func(ctx context.Context, args ...any) ([]any, error) {
+		x := args[0].(int)
+		return []any{x + 1}, nil
+	}
+
+	finally := func(ctx context.Context, args ...any) (int, error) {
+		x := args[0].(int)
+		return x * x, nil
+	}
+
+	ctx := context.Background()
+	input := 5
+
+	result, _ := Process(ctx, []Func{f}, finally, input)
+
+	fmt.Println("Result:", result)
+	// Output: Result: 36
+}
+
 func TestProcess(t *testing.T) {
 
 	f1 := func(ctx context.Context, args ...any) ([]any, error) {

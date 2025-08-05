@@ -3,7 +3,7 @@
 
 # Chain
 
-Controlled chaining of `func`s together to produce a desired output.
+Controlled chaining of `func`s together using the Flow representation to produce a desired output.
 
 ```go
 func main() {
@@ -20,7 +20,7 @@ func main() {
     ctx := context.Background()
     input := 5
 
-    result, _ := New[int](ctx, input).
+    result, _ := chain.New[int](ctx, input).
         Then(first).
         Finally(finally)
 
@@ -28,5 +28,31 @@ func main() {
     // Output: Result: 36
 }
 ```
+
+The `Process` function can be used as an alternative.
+
+```go
+func main() {
+    f := func(ctx context.Context, args ...any) ([]any, error) {
+        x := args[0].(int)
+        return []any{x + 1}, nil
+    }
+
+    finally := func(ctx context.Context, args ...any) (int, error) {
+        x := args[0].(int)
+        return x * x, nil
+    }
+
+    ctx := context.Background()
+    input := 5
+
+    result, _ := chain.Process(ctx, []chain.Func{f}, finally, input)
+
+    fmt.Println("Result:", result)
+    // Output: Result: 36
+}
+```
+
+The chain checks for context completion between calls to each function, exiting the chain should this occur with an appropriate error.  Long running functions should similarly check for context completion.
 
 See examples for usage.
