@@ -44,13 +44,16 @@ func Process[T any](ctx context.Context, fs []Func, fn FinalFunc[T], args ...any
 	return c.Finally(fn)
 }
 
+// ErrNilThenFunc is raised if a nil func is passsed to Then
+var ErrNilThenFunc = errors.New("func provided to Then cannot be nil")
+
 // Then adds a transformation step: func(...any) ([]any, error)
 func (c Chain[T]) Then(f Func) Chain[T] {
-	if f == nil {
-		return Chain[T]{err: fmt.Errorf("func provided to Then cannot be nil")}
-	}
 	if c.err != nil {
 		return c
+	}
+	if f == nil {
+		return Chain[T]{err: ErrNilThenFunc}
 	}
 
 	select {
@@ -68,13 +71,16 @@ func (c Chain[T]) Then(f Func) Chain[T] {
 	}
 }
 
+// ErrNilFinalFunc is raised if a nil func is passsed to Finally
+var ErrNilFinalFunc = errors.New("func provided to Finally cannot be nil")
+
 // Finally is a generic method on Chain that ends the pipeline
 func (c Chain[T]) Finally(f FinalFunc[T]) (T, error) {
-	if f == nil {
-		return c.t, fmt.Errorf("func provided to Finally cannot be nil")
-	}
 	if c.err != nil {
 		return c.t, c.err
+	}
+	if f == nil {
+		return c.t, ErrNilFinalFunc
 	}
 
 	select {
