@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"testing"
+	"time"
 )
 
 func ExampleNew() {
@@ -109,4 +111,35 @@ func ExampleNew_failure() {
 
 	fmt.Println("Result:", result)
 	// Output: error in github.com/gford1000-go/chain.ExampleNew_failure.func3: x became negative
+}
+
+func TestNew(t *testing.T) {
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	f1 := func(ctx context.Context, args ...any) ([]any, error) {
+		<-time.After(10 * time.Millisecond)
+		return args, nil
+	}
+
+	f2 := func(ctx context.Context, args ...any) (int, error) {
+		return args[0].(int), nil
+	}
+
+	go func() {
+		<-time.After(5 * time.Millisecond)
+		cancel()
+	}()
+
+	_, err := New[int](ctx, 5).
+		Then(f1).
+		Finally(f2)
+
+	if err == nil {
+		t.Fatal("expected error, not nil")
+	}
+
+	if !errors.Is(err, ErrContextDone) {
+		t.Fatalf("expected context done error, got: %v", err)
+	}
 }

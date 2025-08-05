@@ -2,10 +2,16 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"runtime"
 )
+
+// ErrContextDone is raised when context is done whilst the chain is still being completed
+// Context status is checked prior to invoking each func in the chain, and should also be
+// checked during long running funcs.
+var ErrContextDone = errors.New("context is Done()")
 
 // Func is the type of func that can be passed to Chain.Then
 type Func func(context.Context, ...any) ([]any, error)
@@ -26,8 +32,23 @@ func New[T any](ctx context.Context, args ...any) Chain[T] {
 	return Chain[T]{ctx: ctx, args: args}
 }
 
+// Process is a single line equivalent for a chain call
+func Process[T any](ctx context.Context, fs []Func, fn FinalFunc[T], args ...any) (T, error) {
+
+	c := New[T](ctx, args)
+
+	for _, f := range fs {
+		c = c.Then(f)
+	}
+
+	return c.Finally(fn)
+}
+
 // Then adds a transformation step: func(...any) ([]any, error)
 func (c Chain[T]) Then(f Func) Chain[T] {
+	if f == nil {
+		return Chain[T]{err: fmt.Errorf("func provided to Then cannot be nil")}
+	}
 	if c.err != nil {
 		return c
 	}
@@ -35,12 +56,12 @@ func (c Chain[T]) Then(f Func) Chain[T] {
 	select {
 	case <-c.ctx.Done():
 		funcName := runtimeFuncName(f)
-		return Chain[T]{args: c.args, err: fmt.Errorf("context Done() prior to call to %s", funcName)}
+		return Chain[T]{err: fmt.Errorf("prior to call to %s, %w", funcName, ErrContextDone)}
 	default:
 		result, err := f(c.ctx, c.args...)
 		if err != nil {
 			funcName := runtimeFuncName(f)
-			return Chain[T]{args: c.args, err: fmt.Errorf("error in %s: %w", funcName, err)}
+			return Chain[T]{err: fmt.Errorf("error in %s: %w", funcName, err)}
 		}
 
 		return Chain[T]{args: result, t: c.t, ctx: c.ctx}
@@ -49,7 +70,9 @@ func (c Chain[T]) Then(f Func) Chain[T] {
 
 // Finally is a generic method on Chain that ends the pipeline
 func (c Chain[T]) Finally(f FinalFunc[T]) (T, error) {
-
+	if f == nil {
+		return c.t, fmt.Errorf("func provided to Finally cannot be nil")
+	}
 	if c.err != nil {
 		return c.t, c.err
 	}
@@ -57,7 +80,7 @@ func (c Chain[T]) Finally(f FinalFunc[T]) (T, error) {
 	select {
 	case <-c.ctx.Done():
 		funcName := runtimeFuncName(f)
-		return c.t, fmt.Errorf("context Done() prior to call to %s", funcName)
+		return c.t, fmt.Errorf("prior to call to %s, %w", funcName, ErrContextDone)
 	default:
 
 		result, err := f(c.ctx, c.args...)
